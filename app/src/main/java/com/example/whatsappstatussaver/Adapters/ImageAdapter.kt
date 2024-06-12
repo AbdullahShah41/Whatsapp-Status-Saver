@@ -1,26 +1,41 @@
 package com.example.whatsappstatussaver.Adapters
 
+import android.net.Uri
+import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.ImageView
-import androidx.appcompat.view.menu.MenuView.ItemView
-import androidx.databinding.BindingAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.example.whatsappstatussaver.Data.ImageUri
+import com.example.whatsappstatussaver.databinding.ImageItemBinding
 
-class ImageAdapter : RecyclerView.Adapter<ImageAdapter.ViewHolder>() {
-    inner class ViewHolder(): RecyclerView.ViewHolder(itemView) {
+class ImageAdapter(private val images: List<ImageUri>,private val clickListener: (ImageUri) -> Unit) : RecyclerView.Adapter<ImageAdapter.ImageViewHolder>() {
 
-    }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        TODO("Not yet implemented")
+        val binding = ImageItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return ImageViewHolder(binding)
     }
 
     override fun getItemCount(): Int {
-        TODO("Not yet implemented")
+        return images.size
     }
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        TODO("Not yet implemented")
+    override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
+        Glide.with(holder.itemView.context)
+            .load(images[position].imageUri)
+            .into(holder.binding.imageView)
+
+        holder.itemView.setOnClickListener {
+            clickListener(images[position])
+        }
+    }
+
+    inner class ImageViewHolder(val binding: ImageItemBinding) :
+        RecyclerView.ViewHolder(binding.root) {
     }
 }
+
+
+
+
+
