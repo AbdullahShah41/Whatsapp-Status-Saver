@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#0CA996"
-    tools:context=".Activities.SplashActivity">
+    tools:context=".activities.SplashActivity">
 
     <de.hdodenhof.circleimageview.CircleImageView
         android:id="@+id/image"
@@ -22,7 +22,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Status Sever"
+        android:text="Status Saver \n        App"
         android:textColor="@color/white"
         android:textSize="32dp"
         android:textStyle="bold"

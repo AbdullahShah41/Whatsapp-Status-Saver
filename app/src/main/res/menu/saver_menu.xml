@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+
+        <item
+            android:id="@+id/item2"
+            android:icon="@drawable/dots"
+            android:title="@string/app_name"
+            android:backgroundTint="@drawable/transparent_background"
+            />
+        <item
+            android:id="@+id/item3"
+            android:icon="@drawable/baseline_dark_mode_24"
+            android:title="Dark Mode"
+            android:background="@android:color/transparent"
+            />
+
+</menu>

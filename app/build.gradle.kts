@@ -46,6 +46,7 @@ dependencies {
     implementation("com.google.android.material:material:1.3.0")
     implementation("com.github.bumptech.glide:glide:4.11.0")
     implementation(libs.firebase.crashlytics.buildtools)
+    implementation("androidx.drawerlayout:drawerlayout:1.2.0")
     implementation(libs.androidx.ui.desktop)
     annotationProcessor("com.github.bumptech.glide:compiler:4.11.0")
     implementation(libs.androidx.core.ktx)
@@ -61,3 +62,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+
+
+
+
+
