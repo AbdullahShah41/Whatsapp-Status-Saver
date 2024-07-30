@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.ContentValues
 import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
@@ -13,9 +12,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.storage.StorageManager
-import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -25,45 +22,93 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Spinner
 import android.widget.Toast
-import androidx.annotation.RequiresApi
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.addCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
+import com.example.whatsappstatussaver.Constants
 import com.example.whatsappstatussaver.R
 import com.example.whatsappstatussaver.activities.ImageViewerActivity
 import com.example.whatsappstatussaver.adapters.ImageAdapter
-import com.example.whatsappstatussaver.data.ImageUri
+import com.example.whatsappstatussaver.data.ModelImageUri
 import com.example.whatsappstatussaver.databinding.FragmentImagesBinding
-import java.io.IOException
-import java.io.OutputStream
+import com.example.whatsappstatussaver.viewmodels.ImagesViewModel
+import com.example.whatsappstatussaver.viewmodelsfactories.ImagesViewModelFactory
 
 class ImagesFragment : Fragment() {
 
     private lateinit var binding: FragmentImagesBinding
-    private lateinit var statusList: ArrayList<ImageUri>
+    private lateinit var statusList: ArrayList<ModelImageUri>
+    private lateinit var viewModel: ImagesViewModel
     private lateinit var imageAdapter: ImageAdapter
+    private lateinit var getFolderPermissionLauncher: ActivityResultLauncher<Intent>
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        getFolderPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let {uri ->
+                    requireActivity().contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                    val sh = requireActivity().getSharedPreferences("DATA_PATH", Context.MODE_PRIVATE)
+                    with(sh.edit()) {
+                        putString("PATH", uri.toString())
+                        apply()
+                    }
+                }
+            }
+        }
+
+        Log.d(TAG, "onCreate Called")
+//        activity?.onBackPressedDispatcher?.addCallback(this, object : OnBackPressedCallback(true) {
+//            override fun handleOnBackPressed() {
+//                onBackPress()
+//            }
+//        })
+    }
+
+//    private fun onBackPress() {
+//        parentFragmentManager.popBackStack()
+//    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
+        Log.d(TAG, "onCreate View Called")
         binding = FragmentImagesBinding.inflate(inflater, container, false)
+//        val factory = ImagesViewModelFactory(requireActivity().application)
+
         return binding.root
     }
 
     //    onViewCreated method initializes a list to store file URIs, reads a stored URI path from SharedPreferences, and attempts to access files at that path.
-    @RequiresApi(Build.VERSION_CODES.Q)
+//    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
+        Log.d(TAG, "onView Created Called")
+        viewModel =
+            ViewModelProvider(this, ImagesViewModelFactory(requireActivity().application))[ImagesViewModel::class.java]
         statusList = ArrayList()  // Initializes an empty list to store ImageUri objects.
         imageAdapter = ImageAdapter(
             statusList,
             { imageUri -> imageClicked(imageUri) },
             { imageUri -> fabClicked(imageUri) })
+
+        binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
+        binding.recyclerView.adapter = imageAdapter
+
+        viewModel.statusList.observe(viewLifecycleOwner){ list ->
+            imageAdapter.updateImages(list)
+        }
 
         val sortSpinner: Spinner = binding.sortSpinner
         val sortOptions = arrayOf("New to Old", "Old to New")
@@ -80,8 +125,8 @@ class ImagesFragment : Fragment() {
                 id: Long
             ) {
                 when (position) {
-                    0 -> sortByAscendingTime()
-                    1 -> sortByDescendingTime()
+                    0 -> viewModel.sortByAscendingTime()
+                    1 -> viewModel.sortByDescendingTime()
                 }
             }
 
@@ -91,14 +136,15 @@ class ImagesFragment : Fragment() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
+    //    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onResume() {
+        Log.d(TAG, "onResume Called")
         super.onResume()
         loadImages()
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun loadImages(){
+    //    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun loadImages() {
         statusList.clear()
         val result = readDataFromPrefs()  //  Calls a method to read data from SharedPreferences.
         Log.d(TAG, "onViewCreated: readDataFromPrefs result = $result")
@@ -108,7 +154,7 @@ class ImagesFragment : Fragment() {
                 Context.MODE_PRIVATE
             )  // Retrieves the URI path from SharedPreferences.
             val uriPath = sh.getString("PATH", "")  // Retrieves the stored URI path as a string.
-            Log.d(TAG, "onViewCreated: uriPath = $uriPath")
+            Log.d(TAG, "load images: uriPath = $uriPath")
             // Handle URI path
 
             uriPath?.let {  // Checks if the URI path is not null.
@@ -116,28 +162,8 @@ class ImagesFragment : Fragment() {
                     requireActivity().contentResolver.takePersistableUriPermission(
                         Uri.parse(it), Intent.FLAG_GRANT_READ_URI_PERMISSION
                     )  //Requests permission to read from the URI permanently.
-                    val fileDoc = DocumentFile.fromTreeUri(
-                        requireContext(),
-                        Uri.parse(it)
-                    )  // Retrieves the DocumentFile object for the specified URI.
-                    fileDoc?.listFiles()
-                        ?.forEach { file ->  //  Iterates over the files in the directory.
-                            if (file.name!!.endsWith(".jpg") || file.name!!.endsWith(".png") || file.name!!.endsWith(
-                                    ".jpeg"
-                                )
-                            ) {
-                                val imageUri = ImageUri(
-                                    file.uri,
-                                    file.lastModified())
-                                statusList.add(imageUri)
-                                Log.d(TAG, "onViewCreated: Added imageUri = $imageUri")
-
-                            }  // Creates an ImageUri object for the file.
-                            // Adds the ImageUri to statusList.
-                        }
-                    setUpRecyclerView(statusList)
-                }
-                catch (e: Exception) {
+                    viewModel.loadImages(it)
+                } catch (e: Exception) {
                     Log.e(TAG, "Error accessing URI : $uriPath", e)
                     getFolderPermission()
                 }
@@ -149,23 +175,11 @@ class ImagesFragment : Fragment() {
         }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    private fun sortByAscendingTime() {
-        statusList.sortBy { it.timeStamp }
-        imageAdapter.notifyDataSetChanged()
-    }
-
-    @SuppressLint("NotifyDataSetChanged")
-    private fun sortByDescendingTime() {
-        statusList.sortByDescending { it.timeStamp }
-        imageAdapter.notifyDataSetChanged()
-    }
-
     private fun readDataFromPrefs(): Boolean {
         val sh = requireActivity().getSharedPreferences(
             "DATA_PATH",
             Context.MODE_PRIVATE
-        )  //This line retrieves a SharedPreferences object named "DATA_PATH" in private mode, which means the file is accessible only by this application.
+        )
         val uriPath = sh.getString(
             "PATH",
             ""
@@ -173,24 +187,54 @@ class ImagesFragment : Fragment() {
         Log.d(TAG, "readDataFromPrefs: uriPath = $uriPath")
         return !uriPath.isNullOrEmpty()
     }
+    //The getFolderPermission function  is used to request access to a specific directory.
 
-    //The getFolderPermission function  is used to request access to a specific directory using the Storage Access Framework (SAF) on Android Q (API level 29) and higher.
-    @RequiresApi(Build.VERSION_CODES.Q)
-    fun getFolderPermission() {
+    //    @RequiresApi(Build.VERSION_CODES.Q)
+    private var backPressCancelled: Boolean = false
+    @SuppressLint("NewApi")
+    private fun getFolderPermission() {
+
         Log.d(TAG, "getFolderPermission: Requesting folder permission")
-        val storageManager =
-            requireActivity().getSystemService(Context.STORAGE_SERVICE) as StorageManager
-        val intent = storageManager.primaryStorageVolume.createOpenDocumentTreeIntent()
-        val targetDirectory = "Android%2Fmedia%2Fcom.whatsapp%2FWhatsApp%2FMedia%2F.Statuses"
-        var uri = intent.getParcelableExtra<Uri>("android.provider.extra.INITIAL_URI") as Uri
-        var scheme = uri.toString()
-        scheme = scheme.replace("/root", "/document")
-        scheme += "%3A$targetDirectory"
-        uri = Uri.parse(scheme)
-        intent.putExtra("android.provider.extra.INITIAL_URI", uri)
-        intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
-//        startActivityForResult(intent, 1001)
+        backPressCancelled = true
+//        handleBackPress()
+//    Using StorageManager to get access to the primary storage volume
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val storageManager =
+                requireActivity().getSystemService(Context.STORAGE_SERVICE) as StorageManager
+            val intent = storageManager.primaryStorageVolume.createOpenDocumentTreeIntent()
+//        val targetDirectory = Constants.BUSINESS_WHATSAPP_PATH
+            val targetDirectory = Constants.SIMPLE_WHATSAPP_PATH
+            var uri = intent.getParcelableExtra("android.provider.extra.INITIAL_URI", Uri::class.java)!!
+            var scheme = uri.toString()
+            scheme = scheme.replace("/root", "/document")
+            scheme += "%3A$targetDirectory"
+            uri = Uri.parse(scheme)
+            intent.putExtra("android.provider.extra.INITIAL_URI", uri)
+            intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
+            getFolderPermissionLauncher.launch(intent)
+        //            startActivityForResult(intent, 1001)
+        } else {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
+            startActivityForResult(intent, 1001)
+            getFolderPermissionLauncher.launch(intent)
+        }
+//        handleBackPress()
     }
+
+//    private fun handleBackPress() {
+//        requireActivity().onBackPressedDispatcher.addCallback(this) {
+//            if (backPressCancelled) {
+//                Toast.makeText(requireContext(), "Folder Permission Cancelled ", Toast.LENGTH_SHORT)
+//                    .show()
+//                requireActivity().finishAffinity()
+//            } else {
+//                isEnabled = false
+//                requireActivity().onBackPressed()
+//            }
+//        }
+//    }
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -205,66 +249,40 @@ class ImagesFragment : Fragment() {
                     putString("PATH", uri.toString())
                     apply()
                 }
-                Log.d(TAG, "onActivityResult: URI permission granted and saved to SharedPreferences")
+                Log.d(
+                    TAG,
+                    "onActivityResult: URI permission granted and saved to SharedPreferences"
+                )
             }
+        } else {
+            Toast.makeText(requireContext(), "Folder Permission Denied ", Toast.LENGTH_SHORT).show()
+            return
+//            requireActivity().finishAffinity()
         }
     }
 
-    private fun setUpRecyclerView(imagesList: List<ImageUri>) {
-        imageAdapter = ImageAdapter(
-            imagesList,
-            { imageUri -> imageClicked(imageUri) },
-            { imageUri -> fabClicked(imageUri) }
-        )
-        binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
-        binding.recyclerView.adapter = imageAdapter
-    }
-
-    private fun imageClicked(status: ImageUri) {
+    private fun imageClicked(status: ModelImageUri) {
         val intent = Intent(requireContext(), ImageViewerActivity::class.java)
         intent.putExtra("imageUri", status.imageUri)
         startActivity(intent)
     }
 
-    private fun fabClicked(status: ImageUri) {
+    private fun fabClicked(status: ModelImageUri) {
         val dialog = android.app.Dialog(this@ImagesFragment.requireContext())
         dialog.setContentView(R.layout.custom_dialog)
         dialog.show()
         val downloadButton = dialog.findViewById<Button>(R.id.downloadButton)
         downloadButton.setOnClickListener {
             dialog.dismiss()
-            saveFile(status)
-        }
-    }
-
-    private fun saveFile(status: ImageUri) {
-        val inputStream = requireActivity().contentResolver.openInputStream(status.imageUri)
-        val fileName = "${System.currentTimeMillis()}.jpg"
-        try {
-            val values = ContentValues()
-            values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            values.put(MediaStore.MediaColumns.MIME_TYPE, "images/jpg")
-            values.put(MediaStore.MediaColumns.MIME_TYPE, "images/png")
-            values.put(MediaStore.MediaColumns.MIME_TYPE, "images/jpeg")
-            values.put(
-                MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS +
-                        "/Whatsapp Statuses/"
-            )
-            val uri = requireActivity().contentResolver.insert(
-                MediaStore.Files.getContentUri("external"), values
-            )
-            val outputStream: OutputStream = uri?.let {
-                requireActivity().contentResolver.openOutputStream(it)
-            }!!
-            if (inputStream != null) {
-                outputStream.write(inputStream.readBytes())
-            }
-            outputStream.close()
-            Toast.makeText(requireContext(), "Image Saved", Toast.LENGTH_SHORT).show()
-            showDownloadNotification(fileName)
-
-        } catch (e: IOException) {
-            Toast.makeText(requireContext(), "Failed", Toast.LENGTH_SHORT).show()
+            viewModel.saveFile(
+                status,
+                onSuccess = {
+                    Toast.makeText(requireContext(), "Image Saved", Toast.LENGTH_SHORT).show()
+                    showDownloadNotification("${System.currentTimeMillis()}.jpg")
+                },
+                onFailure = {
+                    Toast.makeText(requireContext(), "Failed", Toast.LENGTH_SHORT).show()
+                })
         }
     }
 
@@ -307,7 +325,7 @@ class ImagesFragment : Fragment() {
 
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS)
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -329,11 +347,3 @@ class ImagesFragment : Fragment() {
         }
     }
 }
-
-
-
-
-
-
-
-

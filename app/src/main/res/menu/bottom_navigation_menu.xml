@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/s_wa"
+        android:icon="@drawable/round_icon"
+        android:title="@string/status"/>
+    <item
+        android:id="@+id/b_wa"
+        android:icon="@drawable/group"
+        android:title="@string/b_status"/>
+
+    <item
+        android:id="@+id/save"
+        android:icon="@drawable/group"
+        android:title="@string/saved"/>
+</menu>

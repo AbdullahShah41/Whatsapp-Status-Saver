@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    app:startDestination="@id/homeFragment"
+    android:id="@+id/nav_graph">
+
+    <fragment
+        android:id="@+id/privacyFragment"
+        android:name="com.example.whatsappstatussaver.fragments.PrivacyFragment"
+        tools:layout="@layout/fragment_privacy"
+        >
+        <action
+            android:id="@+id/action_privacy_to_homeFragment"
+            app:destination="@id/homeFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/aboutFragment"
+        android:name="com.example.whatsappstatussaver.fragments.AboutFragment"
+        tools:layout="@layout/fragment_about" >
+
+        <action
+            android:id="@+id/action_aboutFragment_to_homeFragment"
+            app:destination="@id/homeFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.whatsappstatussaver.fragments.HomeFragment"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_homeFragment_to_aboutFragment"
+            app:destination="@id/aboutFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_privacy"
+            app:destination="@id/privacy" />
+        <action
+            android:id="@+id/action_homeFragment_to_businessHomeFragment"
+            app:destination="@id/businessFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_savedFragment"
+            app:destination="@id/saveFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/businessFragment"
+        android:name="com.example.whatsappstatussaver.fragments.BusinessHomeFragment"
+        tools:layout="@layout/fragment_business_home" />
+    <action
+        android:id="@+id/action_businessFragment_to_homeFragment"
+        app:destination="@id/homeFragment" />
+    <fragment
+        android:id="@+id/saveFragment"
+        android:name="com.example.whatsappstatussaver.fragments.SavedFragment"
+        tools:layout="@layout/fragment_saved" />
+    <action
+        android:id="@+id/action_saveFragment_to_homeFragment"
+        app:destination="@id/homeFragment" />
+</navigation>
+
+
+

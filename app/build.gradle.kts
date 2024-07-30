@@ -1,7 +1,11 @@
+import java.util.regex.Pattern.compile
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("org.jetbrains.kotlin.kapt")
+//    id("androidx.navigation.safeargs")
+    id("androidx.navigation.safeargs.kotlin")
 }
 
 android {
@@ -29,7 +33,6 @@ android {
     }
     buildFeatures{
         viewBinding = true
-        dataBinding = true
     }
 
     compileOptions {
@@ -42,22 +45,25 @@ android {
 }
 
 dependencies {
-    implementation("androidx.viewpager2:viewpager2:1.1.0")
-    implementation("com.google.android.material:material:1.3.0")
-    implementation("com.github.bumptech.glide:glide:4.11.0")
-    implementation(libs.firebase.crashlytics.buildtools)
-    implementation("androidx.drawerlayout:drawerlayout:1.2.0")
-    implementation(libs.androidx.ui.desktop)
-    annotationProcessor("com.github.bumptech.glide:compiler:4.11.0")
+    val lifecycle_version = "2.8.3"
+    val nav_version = "2.3.5"
+
+    implementation(libs.androidx.viewpager2)
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.material.v130)
+    implementation(libs.glide)
+    implementation(libs.androidx.drawerlayout)
+    implementation (libs.androidx.core.splashscreen)
+    annotationProcessor(libs.compiler)
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.androidx.core.ktx)
-    implementation("com.karumi:dexter:6.2.2")
-    implementation("commons-io:commons-io:2.16.1")
-    implementation(libs.androidx.appcompat)
+    implementation(libs.sdp.android)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    kapt("androidx.room:room-compiler:2.5.0")
-    implementation("de.hdodenhof:circleimageview:3.1.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

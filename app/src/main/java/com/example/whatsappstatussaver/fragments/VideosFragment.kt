@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.ContentValues
 import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
@@ -12,11 +11,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.storage.StorageManager
-import android.provider.MediaStore
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -25,27 +21,39 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Spinner
 import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.addCallback
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.documentfile.provider.DocumentFile
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
+import com.example.whatsappstatussaver.R
 import com.example.whatsappstatussaver.activities.VideoViewActivity
 import com.example.whatsappstatussaver.adapters.VideoAdapter
-import com.example.whatsappstatussaver.data.VideoUri
-import com.example.whatsappstatussaver.R
+import com.example.whatsappstatussaver.data.ModelVideoUri
 import com.example.whatsappstatussaver.databinding.FragmentVideosBinding
-import java.io.IOException
-import java.io.OutputStream
+import com.example.whatsappstatussaver.viewmodels.VideosViewModel
+import com.example.whatsappstatussaver.viewmodelsfactories.VideosViewModelFactory
 
 class VideosFragment : Fragment() {
 
     private lateinit var binding: FragmentVideosBinding
-    private lateinit var statusList: ArrayList<VideoUri>
+    private lateinit var statusList: ArrayList<ModelVideoUri>
     private lateinit var videoAdapter: VideoAdapter
+    private lateinit var viewModel: VideosViewModel
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        activity?.onBackPressedDispatcher?.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                parentFragmentManager.popBackStack()
+            }
+        })
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -58,11 +66,18 @@ class VideosFragment : Fragment() {
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         statusList = ArrayList()
-        videoAdapter = VideoAdapter(statusList,{ videoUri -> fabClicked(videoUri) },{ videoUri -> listItemClicked(videoUri) })
+        videoAdapter = VideoAdapter(
+            statusList,
+            { videoUri -> fabClicked(videoUri) },
+            { videoUri -> listItemClicked(videoUri) })
+
+        binding.recyclerView2.layoutManager = GridLayoutManager(requireContext(), 3)
+        binding.recyclerView2.adapter = videoAdapter
 
 
+        val factory = VideosViewModelFactory(requireActivity().application)
+        viewModel = ViewModelProvider(this, factory).get(VideosViewModel::class.java)
         val sortSpinner : Spinner = binding.sortSpinner
         val sortOptions = arrayOf("New to Old","Old to New")
         val adapter = ArrayAdapter(requireContext(),android.R.layout.simple_spinner_item,sortOptions)
@@ -77,14 +92,17 @@ class VideosFragment : Fragment() {
                 id: Long
             ){
                 when (position){
-                    0 -> sortByAscendingTime()
-                    1 -> sortByDescendingTime()
+                    0 -> viewModel.sortByAscendingTime()
+                    1 -> viewModel.sortByDescendingTime()
                 }
             }
             override fun onNothingSelected(parent: AdapterView<*>){
                 // Do nothing
                 }
             }
+        viewModel.statusList.observe(viewLifecycleOwner, { videos ->
+            videoAdapter.notifyDataSetChanged()
+            })
         }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -106,17 +124,17 @@ class VideosFragment : Fragment() {
                     requireActivity().contentResolver.takePersistableUriPermission(
                         Uri.parse(it), Intent.FLAG_GRANT_READ_URI_PERMISSION
                     )
-
+                    viewModel.loadVideos(it)
                     val fileDoc = DocumentFile.fromTreeUri(requireContext(), Uri.parse(it))
                     fileDoc?.listFiles()?.forEach { file ->
                         if (file.name!!.endsWith(".mp4") || file.name!!.endsWith(".mkv") || file.name!!.endsWith(
                                 ".avi"
                             )
                         ) {
-                            val videoUri = VideoUri(
+                            val modelVideoUri = ModelVideoUri(
                                 file.uri,
                                 file.lastModified())
-                            statusList.add(videoUri)
+                            statusList.add(modelVideoUri)
                         }
                     }
                     setUpRecyclerView(statusList)
@@ -132,29 +150,44 @@ class VideosFragment : Fragment() {
         }
     }
 
-    private fun sortByAscendingTime(){
-        statusList.sortBy {it.timeStamp}
-        videoAdapter.notifyDataSetChanged()
-    }
-    private fun sortByDescendingTime(){
-        statusList.sortByDescending {it.timeStamp}
-        videoAdapter.notifyDataSetChanged()
-    }
+//    private fun sortByAscendingTime(){
+//        statusList.sortBy {it.timeStamp}
+//        videoAdapter.notifyDataSetChanged()
+//    }
+//    private fun sortByDescendingTime(){
+//        statusList.sortByDescending {it.timeStamp}
+//        videoAdapter.notifyDataSetChanged()
+//    }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     fun getFolderPermission() {
-        val storageManager =
-            requireActivity().getSystemService(Context.STORAGE_SERVICE) as StorageManager
-        val intent = storageManager.primaryStorageVolume.createOpenDocumentTreeIntent()
-        val targetDirectory = "Android%2Fmedia%2Fcom.whatsapp%2FWhatsApp%2FMedia%2F.Statuses"
-        var uri = intent.getParcelableExtra<Uri>("android.provider.extra.INITIAL_URI") as Uri
-        var scheme = uri.toString()
-        scheme = scheme.replace("/root", "/document")
-        scheme += "%3A$targetDirectory"
-        uri = Uri.parse(scheme)
-        intent.putExtra("android.provider.extra.INITIAL_URI", uri)
-        intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
-        startActivityForResult(intent, 1234)
+        handleBackPress()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val storageManager =
+                requireActivity().getSystemService(Context.STORAGE_SERVICE) as StorageManager
+            val intent = storageManager.primaryStorageVolume.createOpenDocumentTreeIntent()
+            val targetDirectory = "Android%2Fmedia%2Fcom.whatsapp%2FWhatsApp%2FMedia%2F.Statuses"
+            var uri = intent.getParcelableExtra<Uri>("android.provider.extra.INITIAL_URI") as Uri
+            var scheme = uri.toString()
+            scheme = scheme.replace("/root", "/document")
+            scheme += "%3A$targetDirectory"
+            uri = Uri.parse(scheme)
+            intent.putExtra("android.provider.extra.INITIAL_URI", uri)
+            intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
+            startActivityForResult(intent, 1234)
+        } else {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
+            startActivityForResult(intent, 1234)
+        }
+    }
+    private fun handleBackPress(){
+        Log.d(TAG, "handleBackPress: Adding callback")
+        requireActivity().onBackPressedDispatcher.addCallback(this) {
+            Log.d(TAG, "onBackPressedDispatcher: Back pressed detected")
+            Toast.makeText(requireContext(),"Folder Permission Cancelled ",Toast.LENGTH_SHORT).show()
+            requireActivity().finishAffinity()
+        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -180,7 +213,7 @@ class VideosFragment : Fragment() {
         return !uriPath.isNullOrEmpty()
     }
 
-    private fun setUpRecyclerView(videosList: List<VideoUri>) {
+    private fun setUpRecyclerView(videosList: List<ModelVideoUri>) {
 
         videoAdapter = VideoAdapter(
             videosList,
@@ -191,55 +224,64 @@ class VideosFragment : Fragment() {
         binding.recyclerView2.adapter = videoAdapter
     }
 
-    private fun listItemClicked(status: VideoUri) {
+    private fun listItemClicked(status: ModelVideoUri) {
 
         val intent = Intent(this@VideosFragment.requireContext(), VideoViewActivity::class.java)
         intent.putExtra("videoUri", status.videoUri)
         startActivity(intent)
     }
 
-    private fun fabClicked(status: VideoUri) {
-
+    private fun fabClicked(status: ModelVideoUri) {
         val dialog = android.app.Dialog(this@VideosFragment.requireContext())
         dialog.setContentView(R.layout.custom_dialog)
         dialog.show()
         val downloadButton = dialog.findViewById<Button>(R.id.downloadButton)
         downloadButton.setOnClickListener {
             dialog.dismiss()
-            saveFile(status)
+            viewModel.saveFile(
+                status,
+                onSuccess = {
+                    Toast.makeText(requireContext(), "Video Saved", Toast.LENGTH_SHORT).show()
+                    showDownloadNotification("${System.currentTimeMillis()}.mp4")
+                },
+                onFailure = {
+                    Toast.makeText(requireContext(), "Failed", Toast.LENGTH_SHORT).show()
+                }
+            )
+
         }
     }
 
-    private fun saveFile(status: VideoUri) {
-        val inputStream = requireActivity().contentResolver.openInputStream(status.videoUri)
-        val fileName = "${System.currentTimeMillis()}.mp4"
-        try {
-            val values = ContentValues()
-            values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            values.put(MediaStore.MediaColumns.MIME_TYPE, "videos/mp4")
-            values.put(MediaStore.MediaColumns.MIME_TYPE, "videos/x-matroska")
-            values.put(MediaStore.MediaColumns.MIME_TYPE, "videos/avi")
-            values.put(
-                MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS +
-                        "/Whatsapp Statuses/"
-            )
-            val uri = requireActivity().contentResolver.insert(
-                MediaStore.Files.getContentUri("external"), values
-            )
-            val outputStream: OutputStream = uri?.let {
-                requireActivity().contentResolver.openOutputStream(it)
-            }!!
-            if (inputStream != null) {
-                outputStream.write(inputStream.readBytes())
-            }
-            outputStream.close()
-            Toast.makeText(requireContext(), "Video Saved", Toast.LENGTH_SHORT).show()
-
-            showDownloadNotification(fileName)
-        } catch (e: IOException) {
-            Toast.makeText(requireContext(), "Failed", Toast.LENGTH_SHORT).show()
-        }
-    }
+//    private fun saveFile(status: VideoUri) {
+//        val inputStream = requireActivity().contentResolver.openInputStream(status.videoUri)
+//        val fileName = "${System.currentTimeMillis()}.mp4"
+//        try {
+//            val values = ContentValues()
+//            values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+//            values.put(MediaStore.MediaColumns.MIME_TYPE, "videos/mp4")
+//            values.put(MediaStore.MediaColumns.MIME_TYPE, "videos/x-matroska")
+//            values.put(MediaStore.MediaColumns.MIME_TYPE, "videos/avi")
+//            values.put(
+//                MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS +
+//                        "/Whatsapp Statuses/"
+//            )
+//            val uri = requireActivity().contentResolver.insert(
+//                MediaStore.Files.getContentUri("external"), values
+//            )
+//            val outputStream: OutputStream = uri?.let {
+//                requireActivity().contentResolver.openOutputStream(it)
+//            }!!
+//            if (inputStream != null) {
+//                outputStream.write(inputStream.readBytes())
+//            }
+//            outputStream.close()
+//            Toast.makeText(requireContext(), "Video Saved", Toast.LENGTH_SHORT).show()
+//
+//            showDownloadNotification(fileName)
+//        } catch (e: IOException) {
+//            Toast.makeText(requireContext(), "Failed", Toast.LENGTH_SHORT).show()
+//        }
+//    }
 
     private fun showDownloadNotification(fileName: String) {
 

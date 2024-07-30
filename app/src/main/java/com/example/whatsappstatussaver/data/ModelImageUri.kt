@@ -2,8 +2,8 @@ package com.example.whatsappstatussaver.data
 
 import android.net.Uri
 
-data class ImageUri(
-    val imageUri: Uri=Uri.EMPTY,
+data class ModelImageUri(
+    val imageUri: Uri,
     val timeStamp: Long
 )
 

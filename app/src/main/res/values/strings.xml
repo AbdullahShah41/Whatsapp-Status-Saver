@@ -1,8 +1,15 @@
 <resources>
-    <string name="app_name">WhatsApp Status Saver</string>
+    <string name="app_name">Status Saver</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="open">Open</string>
     <string name="close">Close</string>
-
+    <string name="pr_text"> We do not collect Personal Information, and we have adopted effective measures to protect your Non-Personal Information. These measures ensure that such information remains secure and is not accessed or used without proper authorization. Our commitment to your privacy means that we prioritize the protection of any data we handle. .</string>
+    <string name="ab_text">With this Status Saver, you can enjoy and manage the video status and images anytime, also you can easily share them with friends or repost downloaded status to other social media. Install this Status Saver - Download and Save Status for WhatsApp and have a try now! Done!</string>
+    <string name="status">Status</string>
+    <string name="b_status">B Status</string>
+    <string name="saved">Saved</string>
+    <string name="business_statusess">Business Statusess</string>
+    <string name="whatsapp_statusess">WhatsApp Statusess</string>
+    <string name="saved_statusess">Saved Statusess</string>
 </resources>

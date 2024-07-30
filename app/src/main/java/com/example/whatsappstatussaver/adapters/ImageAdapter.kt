@@ -4,13 +4,14 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.example.whatsappstatussaver.data.ImageUri
+import com.example.whatsappstatussaver.R
+import com.example.whatsappstatussaver.data.ModelImageUri
 import com.example.whatsappstatussaver.databinding.ImageItemBinding
 
 class ImageAdapter(
-    private val images: List<ImageUri>,
-    private val imagesClickListener: (ImageUri) -> Unit,
-    private val fabClickListener: (ImageUri) -> Unit,
+    private var images: List<ModelImageUri>,
+    private val imagesClickListener: (ModelImageUri) -> Unit,
+    private val fabClickListener: (ModelImageUri) -> Unit,
 ) : RecyclerView.Adapter<ImageAdapter.ImageViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
@@ -26,7 +27,9 @@ class ImageAdapter(
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
         Glide.with(holder.itemView.context)
             .load(images[position].imageUri)
+            .placeholder(R.drawable.shimmer)
             .into(holder.binding.imageView)
+
 
         holder.binding.imageView.setOnClickListener {
             imagesClickListener(images[position])
@@ -35,10 +38,13 @@ class ImageAdapter(
             fabClickListener(images[position])
         }
     }
+    fun updateImages(newImages: List<ModelImageUri>) {
+        images = newImages
+        notifyDataSetChanged()
+    }
 
     inner class ImageViewHolder(val binding: ImageItemBinding) :
         RecyclerView.ViewHolder(binding.root) {
-
     }
 }
 

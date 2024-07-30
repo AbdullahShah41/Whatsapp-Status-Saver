@@ -2,9 +2,13 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.WhatsAppStatusSaver" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-<!--        <item name="android:statusBarColor">@color/sea_green</item>-->
+        <item name="android:statusBarColor">@color/sea_green</item>
          <item name="colorPrimary">@color/sea_green</item>
-        <item name="android:itemBackground">@drawable/transparent_background</item>
-    </style>
+            </style>
     <style name="Theme.WhatsAppStatusSaver" parent="Base.Theme.WhatsAppStatusSaver" />
+    <style name="ShapeAppearanceOverlay.App.CornerSize50Percent" parent="">
+        <item name="cornerSize">50%</item>
+    </style>
+
+
 </resources>
