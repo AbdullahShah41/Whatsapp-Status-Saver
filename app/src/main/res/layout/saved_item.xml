@@ -19,8 +19,8 @@
             android:layout_height="match_parent">
 
             <ImageView
-                android:id="@+id/videoView"
-                android:layout_width="match_parent"
+                android:id="@+id/imageView"
+                android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
                 app:layout_constraintStart_toStartOf="parent"

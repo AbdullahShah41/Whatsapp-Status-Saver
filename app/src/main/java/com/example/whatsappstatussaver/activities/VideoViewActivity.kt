@@ -47,7 +47,8 @@ class VideoViewActivity : AppCompatActivity() {
                     },
                     onFailure = {
                         Toast.makeText(this, "Video can't be saved ", Toast.LENGTH_SHORT).show()
-                    }
+                    },
+                    this
                 )
             }
         }

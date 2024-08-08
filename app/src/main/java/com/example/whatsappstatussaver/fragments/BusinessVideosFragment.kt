@@ -29,6 +29,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.whatsappstatussaver.Constants
@@ -79,6 +80,13 @@ class BusinessVideosFragment : Fragment() {
             statusList,
             { videoUri -> fabClicked(videoUri) },
             { videoUri -> listItemClicked(videoUri) })
+
+        binding.recyclerView2.layoutManager = GridLayoutManager(requireContext(), 3)
+        binding.recyclerView2.adapter = videoAdapter
+
+        b_viewModel.statusList.observe(viewLifecycleOwner){ list->
+            videoAdapter.updateVideos(list)
+        }
 
         val sortSpinner : Spinner = binding.sortSpinner
         val sortOptions = arrayOf("New to Old","Old to New")
@@ -139,13 +147,13 @@ class BusinessVideosFragment : Fragment() {
                     setUpRecyclerView(statusList)
                 } catch (e: Exception) {
                     Log.e(ContentValues.TAG, "Error accessing URI : $uriPath", e)
-                    getFolderPermission()
+//                    getFolderPermission()
                 }
             } ?: run {
-                getFolderPermission()
+//                getFolderPermission()
             }
         } else {
-            getFolderPermission()
+//            getFolderPermission()
         }
     }
 
@@ -164,12 +172,12 @@ class BusinessVideosFragment : Fragment() {
             val storageManager =
                 requireActivity().getSystemService(Context.STORAGE_SERVICE) as StorageManager
             val intent = storageManager.primaryStorageVolume.createOpenDocumentTreeIntent()
-            val targetDirectory = Constants.BUSINESS_WHATSAPP_PATH
+            val targetDirectory = Constants.SIMPLE_WHATSAPP_PATH
             var uri : Uri? =if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
                 intent.getParcelableExtra("android.provider.extra.INITIAL_URI",Uri::class.java)
             }
             else{
-                intent.getParcelableExtra<Uri>("android.provider.extra.INITIAL_URI")
+                intent.getParcelableExtra("android.provider.extra.INITIAL_URI",Uri::class.java)
             }
 //            var uri = intent.getParcelableExtra<Uri>("android.provider.extra.INITIAL_URI") as Uri
             var scheme = uri.toString()
@@ -230,7 +238,6 @@ class BusinessVideosFragment : Fragment() {
     }
 
     private fun listItemClicked(status: ModelVideoUri) {
-
         val intent = Intent(this.requireContext(), VideoViewActivity::class.java)
         intent.putExtra("videoUri", status.videoUri)
         startActivity(intent)
@@ -251,7 +258,8 @@ class BusinessVideosFragment : Fragment() {
                 },
                 onFailure = {
                     Toast.makeText(requireContext(), "Failed", Toast.LENGTH_SHORT).show()
-                }
+                },
+                activity = requireActivity()
             )
         }
     }

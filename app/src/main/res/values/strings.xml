@@ -12,4 +12,5 @@
     <string name="business_statusess">Business Statusess</string>
     <string name="whatsapp_statusess">WhatsApp Statusess</string>
     <string name="saved_statusess">Saved Statusess</string>
+    <string name="permission"> Please First Give Permission</string>
 </resources>

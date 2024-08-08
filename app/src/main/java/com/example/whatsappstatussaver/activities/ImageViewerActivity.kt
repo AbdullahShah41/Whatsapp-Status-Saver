@@ -27,7 +27,6 @@ class ImageViewerActivity : AppCompatActivity() {
             Glide.with(this)
                 .load(imageUri)
                 .into(binding.imageView)
-
         }
         binding.dbButton.setOnClickListener {
             imageUri?.let { uri ->
@@ -39,7 +38,10 @@ class ImageViewerActivity : AppCompatActivity() {
                     },
                     onFailure = {
                         Toast.makeText(this, "Image can't be saved", Toast.LENGTH_SHORT).show()
-                    })
+                    },
+//                    requireActivity()
+                    this
+                )
             }
         }
         binding.rpButton.setOnClickListener {

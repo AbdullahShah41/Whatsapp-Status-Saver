@@ -1,5 +1,6 @@
 package com.example.whatsappstatussaver.viewmodels
 
+import android.app.Application
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -7,6 +8,8 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -18,7 +21,7 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.OutputStream
 
-class BusinessImagesViewModel(private val context: Context) : ViewModel(){
+class BusinessImagesViewModel(application: Application) : AndroidViewModel(application) {
     private val _statusList = MutableLiveData<ArrayList<ModelImageUri>>()
     val statusList: LiveData<ArrayList<ModelImageUri>> get() = _statusList
 
@@ -27,7 +30,7 @@ class BusinessImagesViewModel(private val context: Context) : ViewModel(){
             val list = ArrayList<ModelImageUri>()
             uriPath?.let {
                 try {
-                    val fileDoc = DocumentFile.fromTreeUri(context, Uri.parse(it))
+                    val fileDoc = DocumentFile.fromTreeUri(getApplication(), Uri.parse(it))
                     fileDoc?.listFiles()?.forEach { file ->
                         if (file.name?.endsWith(".jpg") == true ||
                             file.name?.endsWith(".png") == true ||
@@ -61,28 +64,41 @@ class BusinessImagesViewModel(private val context: Context) : ViewModel(){
             list.sortByDescending { it.timeStamp }
             _statusList.value = ArrayList(list)
         }
-
     }
 
-    fun saveFile(status: ModelImageUri, onSuccess: () -> Unit, onFailure: () -> Unit) {
+    fun getRealPathFromURI(activity: FragmentActivity,contentURI: Uri): String? {
+        val projection = arrayOf(MediaStore.Images.Media.DATA)
+        val cursor = activity.contentResolver.query(contentURI, projection, null, null, null)
+        cursor?.use {
+            if (it.moveToNext()){
+                val columnIndex = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+                return it.getString(columnIndex)
+            }
+        }
+        return null
+    }
+
+    fun saveFile(status: ModelImageUri, onSuccess: () -> Unit, onFailure: () -> Unit,activity: FragmentActivity) {
         viewModelScope.launch(Dispatchers.IO) {
-            val inputStream = context.contentResolver.openInputStream(status.imageUri)
+            val inputStream =
+                getApplication<Application>().contentResolver.openInputStream(status.imageUri)
             val fileName = "${System.currentTimeMillis()}.jpg"
+            val path = getRealPathFromURI(activity,status.imageUri)
             try {
                 val values = ContentValues()
-                values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                values.put(MediaStore.MediaColumns.MIME_TYPE, "images/jpg")
-                values.put(MediaStore.MediaColumns.MIME_TYPE, "images/png")
-                values.put(MediaStore.MediaColumns.MIME_TYPE, "images/jpeg")
+                values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                values.put(MediaStore.Images.Media.MIME_TYPE, "images/jpg")
+                values.put(MediaStore.Images.Media.MIME_TYPE, "images/png")
+                values.put(MediaStore.Images.Media.MIME_TYPE, "images/jpeg")
                 values.put(
-                    MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS +
-                            "/Whatsapp Statuses/"
+                    MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES +
+                            "/WhatsappStatuses/"
                 )
-                val uri = context.contentResolver.insert(
-                    MediaStore.Files.getContentUri("external"), values
+                val uri = activity.contentResolver.insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values
                 )
                 val outputStream: OutputStream = uri?.let {
-                    context.contentResolver.openOutputStream(it)
+                    getApplication<Application>().contentResolver.openOutputStream(it)
                 }!!
                 if (inputStream != null) {
                     outputStream.write(inputStream.readBytes())

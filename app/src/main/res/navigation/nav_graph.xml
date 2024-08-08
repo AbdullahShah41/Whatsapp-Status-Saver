@@ -41,6 +41,14 @@
             app:destination="@id/saveFragment" />
     </fragment>
     <fragment
+        android:id="@+id/images"
+        android:name="com.example.whatsappstatussaver.fragments.ImagesFragment"
+        tools:layout="@layout/fragment_images" />
+    <action
+        android:id="@+id/action_images_to_homeFragment"
+        app:destination="@id/homeFragment" />
+
+    <fragment
         android:id="@+id/businessFragment"
         android:name="com.example.whatsappstatussaver.fragments.BusinessHomeFragment"
         tools:layout="@layout/fragment_business_home" />
@@ -54,7 +62,27 @@
     <action
         android:id="@+id/action_saveFragment_to_homeFragment"
         app:destination="@id/homeFragment" />
+    <fragment
+        android:id="@+id/savedImageFragment"
+        android:name="com.example.whatsappstatussaver.fragments.SavedImageFragment"
+        tools:layout="@layout/fragment_saved_image" >
+
+    <action
+        android:id="@+id/action_savedImageFragment_to_savedImageViewerFragment"
+        app:destination="@id/savedImageViewerFragment" >
+
+
+    </action>
+    </fragment>
+    <fragment
+        android:id="@+id/savedImageViewerFragment"
+        android:name="com.example.whatsappstatussaver.fragments.SavedImageViewerFragment"
+        tools:layout="@layout/fragment_saved_image_viewer">
+    <action
+        android:id="@+id/action_savedImageViewerFragment_to_savedImageFragment"
+        app:destination="@id/savedImageFragment">
+
+    </action>
+
+    </fragment>
 </navigation>
-
-
-

@@ -1,17 +1,18 @@
 package com.example.whatsappstatussaver.viewmodels
 
+import android.app.Activity
+import android.app.Application
 import android.content.ContentValues
-import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.whatsappstatussaver.data.ModelImageUri
 import com.example.whatsappstatussaver.data.ModelVideoUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,7 +20,7 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.OutputStream
 
-class VideosViewModel(private val context: Context) : ViewModel() {
+class VideosViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _statusList = MutableLiveData<ArrayList<ModelVideoUri>>()
     val statusList: LiveData<ArrayList<ModelVideoUri>> get() = _statusList
@@ -29,7 +30,7 @@ class VideosViewModel(private val context: Context) : ViewModel() {
             val list = ArrayList<ModelVideoUri>()
             uriPath?.let {
                 try {
-                    val fileDoc = DocumentFile.fromTreeUri(context, Uri.parse(it))
+                    val fileDoc = DocumentFile.fromTreeUri(getApplication(), Uri.parse(it))
                     fileDoc?.listFiles()?.forEach { file ->
                         if (file.name?.endsWith(".mp4") == true ||
                             file.name?.endsWith(".mkv") == true ||
@@ -63,45 +64,78 @@ class VideosViewModel(private val context: Context) : ViewModel() {
             list.sortByDescending { it.timeStamp }
             _statusList.value = ArrayList(list)
         }
-
     }
 
-    fun saveFile(status: ModelVideoUri, onSuccess: () -> Unit, onFailure: () -> Unit) {
+    fun getRealPathFromURI(contentURI: Uri): String? {
+        val projection = arrayOf(MediaStore.Video.Media.DATA)
+        val cursor = getApplication<Application>().contentResolver.query(contentURI, projection, null, null, null)
+        cursor?.use {
+            if (it.moveToNext()){
+                val columnIndex = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+                return it.getString(columnIndex)
+            }
+        }
+        return null
+    }
+
+    fun saveFile(status: ModelVideoUri, onSuccess: () -> Unit, onFailure: () -> Unit,activity: FragmentActivity) {
         viewModelScope.launch(Dispatchers.IO) {
-            val inputStream = context.contentResolver.openInputStream(status.videoUri)
+            val inputStream = getApplication<Application>().contentResolver.openInputStream(status.videoUri)
             val fileName = "${System.currentTimeMillis()}.mp4"
+            val path = getRealPathFromURI(status.videoUri)
+
             try {
-                val values = ContentValues()
-                values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                values.put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-                values.put(MediaStore.MediaColumns.MIME_TYPE, "videos/mkv")
-                values.put(MediaStore.MediaColumns.MIME_TYPE, "videos/avi")
+                val values = ContentValues().apply {
+                    put(MediaStore.Video.Media.DATA, path)
+                    put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
+                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                    put(MediaStore.Video.Media.MIME_TYPE, "videos/mkv")
+                    put(MediaStore.Video.Media.MIME_TYPE, "videos/avi")
+                }
                 values.put(
-                    MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS +
-                            "/Whatsapp Statuses/"
+                    MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES +
+                            "/WhatsappStatuses/"
                 )
-                val uri = context.contentResolver.insert(
-                    MediaStore.Files.getContentUri("external"), values
+                val uri = activity.contentResolver.insert(
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    values
                 )
-                val outputStream: OutputStream = uri?.let {
-                    context.contentResolver.openOutputStream(it)
-                }!!
-                if (inputStream != null) {
-                    outputStream.write(inputStream.readBytes())
+                if (uri != null) {
+                    activity.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        inputStream?.copyTo(outputStream)
+                    }
+                    withContext(Dispatchers.Main) {
+                        onSuccess()
+                    }
+
+                } else {
+                    withContext(Dispatchers.Main) {
+                        onFailure()
+                    }
                 }
-                outputStream.close()
-                withContext(Dispatchers.Main) {
-                    onSuccess()
-                }
-            } catch (e: IOException) {
+            }
+            catch (e: IOException) {
                 withContext(Dispatchers.Main) {
                     onFailure()
                 }
             }
+//                val uri = getApplication<Application>().contentResolver.insert(
+//                    MediaStore.Files.getContentUri("external"), values
+//                )
+//                val outputStream: OutputStream = uri?.let {
+//                    getApplication<Application>().contentResolver.openOutputStream(it)
+//                }!!
+//                if (inputStream != null) {
+//                    outputStream.write(inputStream.readBytes())
+//                }
+//                outputStream.close()
+//                withContext(Dispatchers.Main) {
+//                    onSuccess()
+//                }
+
         }
     }
 }
-
 
 
 

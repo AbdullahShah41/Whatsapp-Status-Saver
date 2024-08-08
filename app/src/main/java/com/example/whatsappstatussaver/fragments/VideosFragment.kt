@@ -23,6 +23,8 @@ import android.widget.Spinner
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -31,12 +33,15 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
+import com.example.whatsappstatussaver.Constants
 import com.example.whatsappstatussaver.R
 import com.example.whatsappstatussaver.activities.VideoViewActivity
 import com.example.whatsappstatussaver.adapters.VideoAdapter
 import com.example.whatsappstatussaver.data.ModelVideoUri
 import com.example.whatsappstatussaver.databinding.FragmentVideosBinding
+import com.example.whatsappstatussaver.viewmodels.ImagesViewModel
 import com.example.whatsappstatussaver.viewmodels.VideosViewModel
+import com.example.whatsappstatussaver.viewmodelsfactories.ImagesViewModelFactory
 import com.example.whatsappstatussaver.viewmodelsfactories.VideosViewModelFactory
 
 class VideosFragment : Fragment() {
@@ -45,14 +50,29 @@ class VideosFragment : Fragment() {
     private lateinit var statusList: ArrayList<ModelVideoUri>
     private lateinit var videoAdapter: VideoAdapter
     private lateinit var viewModel: VideosViewModel
-
+    private lateinit var getFolderPermissionLauncher: ActivityResultLauncher<Intent>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        activity?.onBackPressedDispatcher?.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                parentFragmentManager.popBackStack()
+        getFolderPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {result ->
+            if (result.resultCode == Activity.RESULT_OK){
+                result.data?.data?.let {uri ->
+                    requireActivity().contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                     )
+                    val sh = requireActivity().getSharedPreferences("DATA_PATH", Context.MODE_PRIVATE)
+                    with(sh.edit()){
+                        putString("PATH",uri.toString())
+                        apply()
+                    }
+                }
             }
-        })
+        }
+//        activity?.onBackPressedDispatcher?.addCallback(this, object : OnBackPressedCallback(true) {
+//            override fun handleOnBackPressed() {
+//                parentFragmentManager.popBackStack()
+//            }
+//        })
     }
 
     override fun onCreateView(
@@ -66,6 +86,7 @@ class VideosFragment : Fragment() {
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        viewModel = ViewModelProvider(this, VideosViewModelFactory(requireActivity().application))[VideosViewModel::class.java]
         statusList = ArrayList()
         videoAdapter = VideoAdapter(
             statusList,
@@ -75,6 +96,9 @@ class VideosFragment : Fragment() {
         binding.recyclerView2.layoutManager = GridLayoutManager(requireContext(), 3)
         binding.recyclerView2.adapter = videoAdapter
 
+        viewModel.statusList.observe(viewLifecycleOwner){list ->
+            videoAdapter.updateVideos(list)
+        }
 
         val factory = VideosViewModelFactory(requireActivity().application)
         viewModel = ViewModelProvider(this, factory).get(VideosViewModel::class.java)
@@ -100,19 +124,18 @@ class VideosFragment : Fragment() {
                 // Do nothing
                 }
             }
-        viewModel.statusList.observe(viewLifecycleOwner, { videos ->
-            videoAdapter.notifyDataSetChanged()
-            })
+        viewModel.statusList.observe(viewLifecycleOwner) { videos ->
+            videoAdapter.updateVideos(videos)
+            }
         }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
+
     override fun onResume() {
         super.onResume()
-        loadImages()
+        loadVideos()
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun loadImages(){
+    private fun loadVideos(){
         statusList.clear()
         val result = readDataFromPrefs()
         if (result) {
@@ -159,13 +182,13 @@ class VideosFragment : Fragment() {
 //        videoAdapter.notifyDataSetChanged()
 //    }
 
-    fun getFolderPermission() {
+    private fun getFolderPermission() {
         handleBackPress()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val storageManager =
                 requireActivity().getSystemService(Context.STORAGE_SERVICE) as StorageManager
             val intent = storageManager.primaryStorageVolume.createOpenDocumentTreeIntent()
-            val targetDirectory = "Android%2Fmedia%2Fcom.whatsapp%2FWhatsApp%2FMedia%2F.Statuses"
+            val targetDirectory = Constants.SIMPLE_WHATSAPP_PATH
             var uri = intent.getParcelableExtra<Uri>("android.provider.extra.INITIAL_URI") as Uri
             var scheme = uri.toString()
             scheme = scheme.replace("/root", "/document")
@@ -190,7 +213,6 @@ class VideosFragment : Fragment() {
         }
     }
 
-    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == 1234 && resultCode == Activity.RESULT_OK) {
             data?.data?.let { uri ->
@@ -239,16 +261,15 @@ class VideosFragment : Fragment() {
         downloadButton.setOnClickListener {
             dialog.dismiss()
             viewModel.saveFile(
-                status,
+                activity=requireActivity(),
+                status = status,
                 onSuccess = {
                     Toast.makeText(requireContext(), "Video Saved", Toast.LENGTH_SHORT).show()
                     showDownloadNotification("${System.currentTimeMillis()}.mp4")
                 },
                 onFailure = {
                     Toast.makeText(requireContext(), "Failed", Toast.LENGTH_SHORT).show()
-                }
-            )
-
+                })
         }
     }
 

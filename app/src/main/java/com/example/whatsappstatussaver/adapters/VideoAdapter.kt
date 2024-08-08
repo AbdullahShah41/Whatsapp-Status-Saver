@@ -5,11 +5,12 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.whatsappstatussaver.R
+import com.example.whatsappstatussaver.data.ModelImageUri
 import com.example.whatsappstatussaver.data.ModelVideoUri
 import com.example.whatsappstatussaver.databinding.VideoItemBinding
 
 class VideoAdapter(
-    private val videos: List<ModelVideoUri>,
+    private var videos: List<ModelVideoUri>,
     private val fabClickListener: (ModelVideoUri) -> Unit,
     private val listItemClicked: (ModelVideoUri) -> Unit
 ) : RecyclerView.Adapter<VideoAdapter.VideoViewHolder>() {
@@ -37,10 +38,16 @@ class VideoAdapter(
         }
     }
 
+    fun updateVideos(newVideos: List<ModelVideoUri>) {
+        videos= newVideos
+        notifyDataSetChanged()
+    }
+
 
     inner class VideoViewHolder(val binding: VideoItemBinding) :
         RecyclerView.ViewHolder(binding.root) {
-    }
+
+        }
 }
 
 

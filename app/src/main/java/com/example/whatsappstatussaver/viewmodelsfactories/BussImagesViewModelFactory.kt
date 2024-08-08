@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.whatsappstatussaver.viewmodels.BusinessImagesViewModel
 
-class Buss_ImagesViewModelFactory(private val application: Application) : ViewModelProvider.AndroidViewModelFactory(application) {
+class BussImagesViewModelFactory(private val application: Application) : ViewModelProvider.AndroidViewModelFactory(application) {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(BusinessImagesViewModel::class.java)) {

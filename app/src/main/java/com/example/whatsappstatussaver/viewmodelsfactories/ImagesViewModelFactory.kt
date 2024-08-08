@@ -9,7 +9,7 @@ class ImagesViewModelFactory(private val application: Application) : ViewModelPr
      @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ImagesViewModel::class.java)) {
-            return ImagesViewModel(application) as T
+            return ImagesViewModel() as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

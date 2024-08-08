@@ -23,12 +23,13 @@ import android.widget.Spinner
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.whatsappstatussaver.Constants
@@ -37,24 +38,42 @@ import com.example.whatsappstatussaver.adapters.ImageAdapter
 import com.example.whatsappstatussaver.data.ModelImageUri
 import com.example.whatsappstatussaver.databinding.FragmentImagesBinding
 import com.example.whatsappstatussaver.viewmodels.BusinessImagesViewModel
-import com.example.whatsappstatussaver.viewmodelsfactories.Buss_ImagesViewModelFactory
+import com.example.whatsappstatussaver.viewmodelsfactories.BussImagesViewModelFactory
 
 class BusinessImagesFragment : Fragment() {
 
     private lateinit var binding: FragmentImagesBinding
     private lateinit var statusList: ArrayList<ModelImageUri>
-//    private lateinit var viewModel: ImagesViewModel
     private lateinit var imageAdapter: ImageAdapter
     private lateinit var b_viewModel: BusinessImagesViewModel
+    private lateinit var getFolderPermissionLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(ContentValues.TAG, "onCreate Called")
-        activity?.onBackPressedDispatcher?.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                onBackPress()
+        getFolderPermissionLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    result.data?.data?.let { uri ->
+
+                        Log.i("permission", "Uri: $uri ")
+
+                        requireActivity().contentResolver.takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                        )
+                        val sh = requireActivity().getSharedPreferences(
+                            "DATA_PATH",
+                            Context.MODE_PRIVATE
+                        )
+                        with(sh.edit()) {
+                            putString("BUSINESS_PATH", uri.toString())
+                            apply()
+                        }
+                    }
+                }
+
             }
-        })
     }
 
     private fun onBackPress() {
@@ -78,7 +97,7 @@ class BusinessImagesFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         Log.d(ContentValues.TAG, "onView Created Called")
         b_viewModel =
-            ViewModelProvider(this, Buss_ImagesViewModelFactory(requireActivity().application)).get(
+            ViewModelProvider(this, BussImagesViewModelFactory(requireActivity().application)).get(
                 BusinessImagesViewModel::class.java
             )
 
@@ -91,9 +110,9 @@ class BusinessImagesFragment : Fragment() {
         binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
         binding.recyclerView.adapter = imageAdapter
 
-        b_viewModel.statusList.observe(viewLifecycleOwner, Observer { list ->
+        b_viewModel.statusList.observe(viewLifecycleOwner) { list ->
             imageAdapter.updateImages(list)
-        })
+        }
 
         val sortSpinner: Spinner = binding.sortSpinner
         val sortOptions = arrayOf("New to Old", "Old to New")
@@ -176,32 +195,44 @@ class BusinessImagesFragment : Fragment() {
 
     //    @RequiresApi(Build.VERSION_CODES.Q)
     private var backPressCancelled: Boolean = false
-    fun getFolderPermission() {
+    private fun getFolderPermission() {
 
         Log.d(ContentValues.TAG, "getFolderPermission: Requesting folder permission")
         backPressCancelled = true
-//        handleBackPress()
-//    Using StorageManager to get access to the primary storage volume
+        val intent: Intent
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val storageManager =
                 requireActivity().getSystemService(Context.STORAGE_SERVICE) as StorageManager
-            val intent = storageManager.primaryStorageVolume.createOpenDocumentTreeIntent()
-        val targetDirectory = Constants.BUSINESS_WHATSAPP_PATH
-//            val targetDirectory = Constants.SIMPLE_WHATSAPP_PATH
-            var uri = intent.getParcelableExtra<Uri>("android.provider.extra.INITIAL_URI") as Uri
-            var scheme = uri.toString()
-            scheme = scheme.replace("/root", "/document")
-            scheme += "%3A$targetDirectory"
-            uri = Uri.parse(scheme)
-            intent.putExtra("android.provider.extra.INITIAL_URI", uri)
+            intent = storageManager.primaryStorageVolume.createOpenDocumentTreeIntent()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val initialUri =
+                    intent.getParcelableExtra("android.provider.extra.INITIAL_URI", Uri::class.java)
+                val targetDirectory = Constants.SIMPLE_WHATSAPP_PATH
+                initialUri?.let {
+                    var scheme = it.toString()
+                    scheme = scheme.replace("/root", "/document")
+                    scheme += "%3A$targetDirectory"
+                    val newUri = Uri.parse(scheme)
+                    intent.putExtra("android.provider.extra.INITIAL_URI", newUri)
+
+                    Log.d(ContentValues.TAG, "Generated URI for API 33+: $newUri")
+                }
+            } else {
+                val targetDirectory = Constants.SIMPLE_WHATSAPP_PATH
+                val uri =
+                    Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A$targetDirectory")
+                intent.putExtra("android.provider.extra.INITIAL_URI", Uri::class.java)
+                Log.d(ContentValues.TAG, "Generated URI for API below 33: $uri")
+            }
             intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
-            startActivityForResult(intent, 1001)
+            //            startActivityForResult(intent, 1001)
         } else {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
-            startActivityForResult(intent, 1001)
+//            startActivityForResult(intent, 1001)
         }
+        getFolderPermissionLauncher.launch(intent)
 //        handleBackPress()
     }
 
@@ -218,7 +249,6 @@ class BusinessImagesFragment : Fragment() {
         }
     }
 
-    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == 1001 && resultCode == Activity.RESULT_OK) {
             data?.data?.let { uri ->
@@ -264,7 +294,8 @@ class BusinessImagesFragment : Fragment() {
                 },
                 onFailure = {
                     Toast.makeText(requireContext(), "Failed", Toast.LENGTH_SHORT).show()
-                })
+                },
+                activity = requireActivity())
         }
     }
 
@@ -311,6 +342,7 @@ class BusinessImagesFragment : Fragment() {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,

@@ -40,9 +40,10 @@ class HomeFragment : Fragment() {
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = tabViewList[position] }.attach()
 
-
         }
     }
+
+
 
 
 

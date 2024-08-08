@@ -6,13 +6,11 @@ import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
 import android.view.View
-import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.fragment.app.Fragment
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
@@ -21,11 +19,7 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.example.whatsappstatussaver.R
 import com.example.whatsappstatussaver.databinding.ActivityMainBinding
-import com.example.whatsappstatussaver.fragments.BusinessHomeFragment
-import com.example.whatsappstatussaver.fragments.BusinessImagesFragment
 import com.example.whatsappstatussaver.fragments.HomeFragment
-import com.example.whatsappstatussaver.fragments.ImagesFragment
-import com.example.whatsappstatussaver.fragments.SavedFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigation.NavigationView
 
@@ -38,13 +32,13 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var bottomNavigationView: BottomNavigationView
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
 
         toolbar = findViewById(R.id.cs_toolbar)
         setSupportActionBar(toolbar)
@@ -69,7 +63,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
         toolbar.navigationIcon = null
 
-        val customIcon = toolbar.findViewById<View>(R.id.hm_icon)
+        val customIcon = toolbar.findViewById<View>(R.id.ic_hamburger)
         customIcon.setOnClickListener {
             drawerLayout.openDrawer(GravityCompat.START)
         }
@@ -156,26 +150,25 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 return true
             }
 
-            R.id.b_wa -> {
-                Log.d("MainActivity", "Navigating to BusinessHomeFragment")
-                navController.navigate(R.id.businessFragment)
-                drawerLayout.closeDrawer(GravityCompat.START)
-                return true
-            }
-
-            R.id.save -> {
-                Log.d("MainActivity", "Navigating to SavedFragment")
-                navController.navigate(R.id.saveFragment)
-                drawerLayout.closeDrawer(GravityCompat.START)
-                return true
-            }
+//            R.id.b_wa -> {
+//                Log.d("MainActivity", "Navigating to BusinessHomeFragment")
+//                navController.navigate(R.id.businessFragment)
+//                drawerLayout.closeDrawer(GravityCompat.START)
+//                return true
+//            }
+//
+//            R.id.save -> {
+//                Log.d("MainActivity", "Navigating to SavedFragment")
+//                navController.navigate(R.id.saveFragment)
+//                drawerLayout.closeDrawer(GravityCompat.START)
+//                return true
+//            }
         }
         return false
     }
 
 
     override fun onSupportNavigateUp(): Boolean {
-//        val navController = findNavController(R.id.nav_host_fragment)
         return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
     }
 
